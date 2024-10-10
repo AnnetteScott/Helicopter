@@ -16,6 +16,7 @@
 #include <Windows.h>
 #include <freeglut.h>
 #include <math.h>
+#include <stdbool.h>
 
  /******************************************************************************
   * Animation & Timing Setup
@@ -38,6 +39,12 @@ unsigned int frameStartTime = 0;
 
 const float scale = 1.0f;
 const float gridSize = 50.0f;
+const float maxRPM = 2000.0f;
+const float rotorRPM = 5.0f;
+float rotorSpeed = 0.0f;
+bool spinning = false;
+float mainRotorAngle = 0.0f;
+float tailRotorAngle = 0.0f;
 
 /******************************************************************************
  * Some Simple Definitions of Motion
@@ -139,6 +146,7 @@ void think(void);
 void initLights(void);
 void drawGrid(float size, int divisions);
 void setColour(int r, int g, int b);
+void drawHelicopter();
 
 /******************************************************************************
  * Animation-Specific Setup (Add your own definitions, constants, and globals here)
@@ -210,6 +218,8 @@ void display(void)
 
 	// Draw the filled grid
 	drawGrid(gridSize, 1);
+
+	drawHelicopter();
 
 	glutSwapBuffers();
 }
@@ -459,47 +469,23 @@ void init(void)
 	starts. Any setup required before the first frame is drawn should be placed
 	in init().
 */
+float angleX = 0.0f;
 void think(void)
 {
-	/*
-		TEMPLATE: REPLACE THIS COMMENT WITH YOUR ANIMATION/SIMULATION CODE
+	if (spinning) {
+		if (rotorSpeed < maxRPM) {
+			rotorSpeed += rotorRPM;
+		}
+		if (rotorSpeed > maxRPM) {
+			rotorSpeed = maxRPM;
+		}
 
-		In this function, we update all the variables that control the animated
-		parts of our simulated world. For example: if you have a moving box, this is
-		where you update its coordinates to make it move. If you have something that
-		spins around, here's where you update its angle.
+		mainRotorAngle += rotorSpeed * FRAME_TIME_SEC;
 
-		NOTHING CAN BE DRAWN IN HERE: you can only update the variables that control
-		how everything will be drawn later in display().
-
-		How much do we move or rotate things? Because we use a fixed frame rate, we
-		assume there's always FRAME_TIME milliseconds between drawing each frame. So,
-		every time think() is called, we need to work out how far things should have
-		moved, rotated, or otherwise changed in that period of time.
-
-		Movement example:
-		* Let's assume a distance of 1.0 GL units is 1 metre.
-		* Let's assume we want something to move 2 metres per second on the x axis
-		* Each frame, we'd need to update its position like this:
-			x += 2 * (FRAME_TIME / 1000.0f)
-		* Note that we have to convert FRAME_TIME to seconds. We can skip this by
-		  using a constant defined earlier in this template:
-			x += 2 * FRAME_TIME_SEC;
-
-		Rotation example:
-		* Let's assume we want something to do one complete 360-degree rotation every
-		  second (i.e. 60 Revolutions Per Minute, or RPM).
-		* Each frame, we'd need to update our object's angle like this (we'll use the
-		  FRAME_TIME_SEC constant as per the example above):
-			a += 360 * FRAME_TIME_SEC;
-
-		This works for any type of "per second" change: just multiply the amount you'd
-		want to move in a full second by FRAME_TIME_SEC, and add or subtract that
-		from whatever variable you're updating.
-
-		You can use this same approach to animate other things like color, opacity,
-		brightness of lights, etc.
-	*/
+		if (mainRotorAngle >= 360.0) {
+			mainRotorAngle -= 360.0;
+		}
+	}
 
 	/*
 		Keyboard motion handler: complete this section to make your "player-controlled"
@@ -513,8 +499,10 @@ void think(void)
 	}
 	if (keyboardMotion.Sway != MOTION_NONE) {
 		/* TEMPLATE: Move (strafe) your object left if .Sway < 0, or right if .Sway > 0 */
+		angleX += 5.0f;
 	}
 	if (keyboardMotion.Heave != MOTION_NONE) {
+		spinning = true;
 		/* TEMPLATE: Move your object down if .Heave < 0, or up if .Heave > 0 */
 	}
 }
@@ -581,5 +569,88 @@ void drawGrid(float size, int squareSize) {
 	}
 }
 
+void drawHelicopter() {
+	float bodyRadius = 1.50f;
+	glPushMatrix();
+		glRotatef(angleX, 0.0f, 1.0f, 0.0f);
+		// Draw the body
+		setColour(255, 0, 0);
+		glTranslatef(0.0f, 2.0f, 0.0f); // Body at the origin
+		glScalef(1.0f, 1.0f, 1.2f); // Scale the sphere to make it oblong
+		glutSolidSphere(bodyRadius, 20, 20); // Sphere with radius 1.0 and 20 slices and stacks
 
+		// Draw the main rotor
+		glPushMatrix();
+			setColour(255, 255, 0);
+			glTranslatef(0.0f, bodyRadius, 0.0f); // Main rotor on top of the body
+			glScalef(1.0f, 1.0f, 1.0f);
+			glRotatef(mainRotorAngle, 0.0f, 1.0f, 0.0f);
+
+			// Draw four blades
+			for (int i = 0; i < 4; ++i) {
+				glPushMatrix();
+					glRotatef(i * 90.0f, 0.0f, 1.0f, 0.0f); // Rotate each blade 90 degrees from the previous one
+					glTranslatef(0.0f, 0.0f, 0.0f); // Position the blade
+					glScalef(6.0f, 0.1f, 0.2f); // Scale the blade
+					glutSolidCube(1.0);
+				glPopMatrix();
+			}
+		glPopMatrix();
+
+		// Tail
+		glPushMatrix();
+			setColour(255, 0, 0);
+			glTranslatef(0.0f, 0.0f, -bodyRadius * 2); // Tail extending from the back of the body
+			glScalef(0.5f, 0.6f, 6.0f);
+			glutSolidCube(1.0);
+		glPopMatrix();
+
+
+		// Tail rotors
+		glPushMatrix();
+			setColour(255, 255, 0);
+			glTranslatef(0.0f, 0.0f, -bodyRadius * 2 - 3.0f); // Position the tail rotor at the end of the tail
+			glRotatef(mainRotorAngle, 1.0f, 0.0f, 0.0f); // Rotate the tail rotor
+			for (int i = 0; i < 4; ++i) {
+				glPushMatrix();
+					glRotatef(i * 90.0f, 1.0f, 0.0f, 0.0f); // Rotate each blade 90 degrees from the previous one
+					glTranslatef(-0.3f, 0.0f, 0.0f); // Position the blade
+					glScalef(0.1f, 0.2f, 1.5f); // Scale the blade
+					glutSolidCube(1.0);
+				glPopMatrix();
+			}
+		glPopMatrix();
+
+		// Draw the landing skids
+		glPushMatrix();
+			setColour(0, 0, 0);
+			glTranslatef(0.5f, -bodyRadius, 0.0f); // Position the first skid
+			glScalef(0.3f, 1.5f, 0.3f); // Scale the skids
+			glutSolidCube(1.0);
+		glPopMatrix();
+
+		glPushMatrix();
+			setColour(0, 0, 0);
+			glTranslatef(-0.5f, -bodyRadius, 0.0f); // Position the first skid
+			glScalef(0.3f, 1.5f, 0.3f); // Scale the skids
+			glutSolidCube(1.0);
+		glPopMatrix();
+
+		glPushMatrix();
+			setColour(0, 0, 0);
+			glTranslatef(0.5f, -bodyRadius - 0.5f, 0.0f); // Position the third skid
+			glScalef(0.3f, 0.2f, 4.0f); // Scale the skids
+			glutSolidCube(1.0);
+		glPopMatrix();
+
+		glPushMatrix();
+			setColour(0, 0, 0);
+			glTranslatef(-0.5f, -bodyRadius - 0.5f, 0.0f); // Position the third skid
+			glScalef(0.3f, 0.2f, 4.0f); // Scale the skids
+			glutSolidCube(1.0);
+		glPopMatrix();
+
+	glPopMatrix();
+
+}
 /******************************************************************************/
