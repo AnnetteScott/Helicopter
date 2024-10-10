@@ -36,6 +36,9 @@ const float FRAME_TIME_SEC = (1000 / TARGET_FPS) / 1000.0f;
 // Time we started preparing the current frame (in milliseconds since GLUT was initialized).
 unsigned int frameStartTime = 0;
 
+const float scale = 1.0f;
+const float gridSize = 50.0f;
+
 /******************************************************************************
  * Some Simple Definitions of Motion
  ******************************************************************************/
@@ -134,6 +137,8 @@ void main(int argc, char** argv);
 void init(void);
 void think(void);
 void initLights(void);
+void drawGrid(float size, int divisions);
+void setColour(int r, int g, int b);
 
 /******************************************************************************
  * Animation-Specific Setup (Add your own definitions, constants, and globals here)
@@ -189,15 +194,24 @@ void main(int argc, char** argv)
  */
 void display(void)
 {
-	/*
-		TEMPLATE: REPLACE THIS COMMENT WITH YOUR DRAWING CODE
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glLoadIdentity();
 
-		Separate reusable pieces of drawing code into functions, which you can add
-		to the "Animation-Specific Functions" section below.
+	// Set up the camera
+	gluLookAt(0.0, 5.0, 20.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 
-		Remember to add prototypes for any new functions to the "Animation-Specific
-		Function Prototypes" section near the top of this template.
-	*/
+	// Switch between filled and wireframe modes
+	if (renderFillEnabled) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
+	else {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
+
+	// Draw the filled grid
+	drawGrid(gridSize, 1);
+
+	glutSwapBuffers();
 }
 
 /*
@@ -205,6 +219,11 @@ void display(void)
 */
 void reshape(int width, int h)
 {
+	glViewport(0, 0, (GLsizei)width, (GLsizei)h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(45.0f, (GLfloat)width / (GLfloat)h, 0.1f, 100.0f);
+	glMatrixMode(GL_MODELVIEW);
 }
 
 /*
@@ -425,6 +444,8 @@ void idle(void)
  */
 void init(void)
 {
+	glClearColor(0.53f, 0.81f, 0.92f, 1.0f); // RGBA for a sky blue color
+	glEnable(GL_DEPTH_TEST); // Enable depth testing
 	initLights();
 
 	// Anything that relies on lighting or specifies normals must be initialised after initLights.
@@ -533,5 +554,32 @@ void initLights(void)
 	// Enable use of simple GL colours as materials.
 	glEnable(GL_COLOR_MATERIAL);
 }
+
+void static setColour(int r, int g, int b) {
+	glColor3f(r / 255.0f, g / 255.0f, b / 255.0f);
+}
+
+void drawGrid(float size, int squareSize) {
+	int divisions = size / squareSize;
+	float halfGridSize = size / 2.0f;
+
+	setColour(55, 92, 49);
+	for (int i = 0; i < divisions; ++i) {
+		for (int j = 0; j < divisions; ++j) {
+			float x0 = -halfGridSize + i * squareSize;
+			float z0 = -halfGridSize + j * squareSize;
+			float x1 = x0 + squareSize;
+			float z1 = z0 + squareSize;
+
+			glBegin(GL_QUADS);
+			glVertex3f(x0, 0.0f, z0);
+			glVertex3f(x1, 0.0f, z0);
+			glVertex3f(x1, 0.0f, z1);
+			glVertex3f(x0, 0.0f, z1);
+			glEnd();
+		}
+	}
+}
+
 
 /******************************************************************************/
