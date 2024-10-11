@@ -24,6 +24,7 @@
 
   // Target frame rate (number of Frames Per Second).
 #define TARGET_FPS 60				
+#define M_PI 3.14159f
 
 // Ideal time each frame should be displayed for (in milliseconds).
 const unsigned int FRAME_TIME = 1000 / TARGET_FPS;
@@ -37,14 +38,33 @@ const float FRAME_TIME_SEC = (1000 / TARGET_FPS) / 1000.0f;
 // Time we started preparing the current frame (in milliseconds since GLUT was initialized).
 unsigned int frameStartTime = 0;
 
-const float scale = 1.0f;
+
 const float gridSize = 50.0f;
+typedef struct {
+	float x, y, z;
+} Point;
+
+//Helicopter
 const float maxRPM = 2000.0f;
 const float rotorRPM = 5.0f;
+const float minY = 2.1f;
+const float moveSpeed = 5.0f;
+const float turnSpeed = 50.0f;
 float rotorSpeed = 0.0f;
 bool spinning = false;
-float mainRotorAngle = 0.0f;
+float rotorAngle = 0.0f;
 float tailRotorAngle = 0.0f;
+float heliRotation = 0.0f;
+
+
+Point heliLocation = { 0.0f, 2.1f, 0.0f };
+
+//Camera
+const float cameraDistance = 20.0f;
+const float cameraHeight = 5.0f;
+float cameraX = 0.0f;
+float cameraY = 5.0f;
+float cameraZ = 20.0f;
 
 /******************************************************************************
  * Some Simple Definitions of Motion
@@ -205,8 +225,9 @@ void display(void)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glLoadIdentity();
 
-	// Set up the camera
-	gluLookAt(0.0, 5.0, 20.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+	gluLookAt(cameraX, cameraY, cameraZ,
+		heliLocation.x, heliLocation.y, heliLocation.z,
+		0.0, 1.0, 0.0);
 
 	// Switch between filled and wireframe modes
 	if (renderFillEnabled) {
@@ -469,7 +490,6 @@ void init(void)
 	starts. Any setup required before the first frame is drawn should be placed
 	in init().
 */
-float angleX = 0.0f;
 void think(void)
 {
 	if (spinning) {
@@ -480,31 +500,81 @@ void think(void)
 			rotorSpeed = maxRPM;
 		}
 
-		mainRotorAngle += rotorSpeed * FRAME_TIME_SEC;
-
-		if (mainRotorAngle >= 360.0) {
-			mainRotorAngle -= 360.0;
+		if (rotorAngle >= 360.0) {
+			rotorAngle -= 360.0;
 		}
 	}
+	else if (rotorSpeed > 0) {
+		rotorSpeed -= rotorRPM;
+		if (rotorSpeed < 0) {
+			rotorSpeed = 0;
+		}
 
+	}
+
+	rotorAngle += rotorSpeed * FRAME_TIME_SEC;
+
+	float yawRadians = heliRotation * (M_PI / 180.0f);
 	/*
 		Keyboard motion handler: complete this section to make your "player-controlled"
 		object respond to keyboard input.
 	*/
 	if (keyboardMotion.Yaw != MOTION_NONE) {
-		/* TEMPLATE: Turn your object right (clockwise) if .Yaw < 0, or left (anticlockwise) if .Yaw > 0 */
+		if (keyboardMotion.Yaw < 0) {
+			// Turn right (clockwise)
+			heliRotation -= turnSpeed * FRAME_TIME_SEC;
+		}
+		else {
+			// Turn left (anticlockwise)
+			heliRotation += turnSpeed * FRAME_TIME_SEC;
+		}
 	}
 	if (keyboardMotion.Surge != MOTION_NONE) {
-		/* TEMPLATE: Move your object backward if .Surge < 0, or forward if .Surge > 0 */
+		if (keyboardMotion.Surge < 0) {
+			// Move backward
+			heliLocation.z -= moveSpeed * FRAME_TIME_SEC * cos(yawRadians);
+			heliLocation.x -= moveSpeed * FRAME_TIME_SEC * sin(yawRadians);
+		}
+		else {
+			// Move forward
+			heliLocation.z += moveSpeed * FRAME_TIME_SEC * cos(yawRadians);
+			heliLocation.x += moveSpeed * FRAME_TIME_SEC * sin(yawRadians);
+		}
 	}
 	if (keyboardMotion.Sway != MOTION_NONE) {
-		/* TEMPLATE: Move (strafe) your object left if .Sway < 0, or right if .Sway > 0 */
-		angleX += 5.0f;
+		if (keyboardMotion.Sway < 0) {
+			// Strafe left
+			heliLocation.x += moveSpeed * FRAME_TIME_SEC * cos(yawRadians);
+			heliLocation.z -= moveSpeed * FRAME_TIME_SEC * sin(yawRadians);
+		}
+		else {
+			// Strafe right
+			heliLocation.x -= moveSpeed * FRAME_TIME_SEC * cos(yawRadians);
+			heliLocation.z += moveSpeed * FRAME_TIME_SEC * sin(yawRadians);
+		}
 	}
 	if (keyboardMotion.Heave != MOTION_NONE) {
-		spinning = true;
-		/* TEMPLATE: Move your object down if .Heave < 0, or up if .Heave > 0 */
+		if (keyboardMotion.Heave > 0) {
+			// Move up
+			spinning = true;
+			if (rotorSpeed >= maxRPM) {
+				heliLocation.y += moveSpeed * FRAME_TIME_SEC;
+			}
+		}
+		else if (keyboardMotion.Heave < 0) {
+			// Move down
+			heliLocation.y -= moveSpeed * FRAME_TIME_SEC;
+		}
 	}
+
+	if (heliLocation.y < minY) {
+		heliLocation.y = minY;
+		spinning = false;
+	}
+
+	cameraX = heliLocation.x - cameraDistance * sin(heliRotation * M_PI / 180.0f);
+	cameraY = heliLocation.y + cameraHeight;
+	cameraZ = heliLocation.z - cameraDistance * cos(heliRotation * M_PI / 180.0f);
 }
 
 /*
@@ -570,28 +640,27 @@ void drawGrid(float size, int squareSize) {
 }
 
 void drawHelicopter() {
-	float bodyRadius = 1.50f;
 	glPushMatrix();
-		glRotatef(angleX, 0.0f, 1.0f, 0.0f);
-		// Draw the body
+		glTranslatef(heliLocation.x, heliLocation.y, heliLocation.z);
+		glRotatef(heliRotation, 0.0f, 1.0f, 0.0f);
+		// Body
 		setColour(255, 0, 0);
-		glTranslatef(0.0f, 2.0f, 0.0f); // Body at the origin
-		glScalef(1.0f, 1.0f, 1.2f); // Scale the sphere to make it oblong
-		glutSolidSphere(bodyRadius, 20, 20); // Sphere with radius 1.0 and 20 slices and stacks
+		glScalef(1.0f, 1.0f, 1.2f);
+		glutSolidSphere(1.50f, 20, 20);
 
-		// Draw the main rotor
+		// Main rotor
 		glPushMatrix();
 			setColour(255, 255, 0);
-			glTranslatef(0.0f, bodyRadius, 0.0f); // Main rotor on top of the body
+			glTranslatef(0.0f, 1.50f, 0.0f);
 			glScalef(1.0f, 1.0f, 1.0f);
-			glRotatef(mainRotorAngle, 0.0f, 1.0f, 0.0f);
+			glRotatef(rotorAngle, 0.0f, 1.0f, 0.0f);
 
 			// Draw four blades
 			for (int i = 0; i < 4; ++i) {
 				glPushMatrix();
-					glRotatef(i * 90.0f, 0.0f, 1.0f, 0.0f); // Rotate each blade 90 degrees from the previous one
-					glTranslatef(0.0f, 0.0f, 0.0f); // Position the blade
-					glScalef(6.0f, 0.1f, 0.2f); // Scale the blade
+					glRotatef(i * 90.0f, 0.0f, 1.0f, 0.0f);
+					glTranslatef(0.0f, 0.0f, 0.0f);
+					glScalef(6.0f, 0.1f, 0.2f);
 					glutSolidCube(1.0);
 				glPopMatrix();
 			}
@@ -600,22 +669,29 @@ void drawHelicopter() {
 		// Tail
 		glPushMatrix();
 			setColour(255, 0, 0);
-			glTranslatef(0.0f, 0.0f, -bodyRadius * 2); // Tail extending from the back of the body
+			glTranslatef(0.0f, 0.0f, -3.0f);
 			glScalef(0.5f, 0.6f, 6.0f);
 			glutSolidCube(1.0);
+
+			glPushMatrix();
+				glTranslatef(0.0f, 0.0f, -0.5f);
+				setColour(255, 0, 0);
+				glScalef(1.0f, 1.0f, 0.16f);
+				glutSolidSphere(0.5f, 20, 20);
+			glPopMatrix();
 		glPopMatrix();
 
 
 		// Tail rotors
 		glPushMatrix();
 			setColour(255, 255, 0);
-			glTranslatef(0.0f, 0.0f, -bodyRadius * 2 - 3.0f); // Position the tail rotor at the end of the tail
-			glRotatef(mainRotorAngle, 1.0f, 0.0f, 0.0f); // Rotate the tail rotor
+			glTranslatef(0.0f, 0.0f, -6.0f);
+			glRotatef(rotorAngle, 1.0f, 0.0f, 0.0f);
 			for (int i = 0; i < 4; ++i) {
 				glPushMatrix();
-					glRotatef(i * 90.0f, 1.0f, 0.0f, 0.0f); // Rotate each blade 90 degrees from the previous one
-					glTranslatef(-0.3f, 0.0f, 0.0f); // Position the blade
-					glScalef(0.1f, 0.2f, 1.5f); // Scale the blade
+					glRotatef(i * 90.0f, 1.0f, 0.0f, 0.0f);
+					glTranslatef(-0.3f, 0.0f, 0.0f);
+					glScalef(0.1f, 0.2f, 1.5f);
 					glutSolidCube(1.0);
 				glPopMatrix();
 			}
@@ -649,8 +725,6 @@ void drawHelicopter() {
 				glutSolidCube(1.0);
 			glPopMatrix();
 		glPopMatrix();
-
-		
 
 	glPopMatrix();
 
