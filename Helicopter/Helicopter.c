@@ -621,34 +621,36 @@ void drawHelicopter() {
 			}
 		glPopMatrix();
 
-		// Draw the landing skids
+		// Landing skids
 		glPushMatrix();
 			setColour(0, 0, 0);
-			glTranslatef(0.5f, -bodyRadius, 0.0f); // Position the first skid
-			glScalef(0.3f, 1.5f, 0.3f); // Scale the skids
+			glTranslatef(0.5f, -1.50f, 0.0f);
+			glScalef(0.3f, 1.0f, 0.3f);
 			glutSolidCube(1.0);
+
+			glPushMatrix();
+				setColour(0, 0, 0);
+				glTranslatef(0.0f, -0.5f, 0.0f);
+				glScalef(1.0f, 0.2f, 10.0f);
+				glutSolidCube(1.0);
+			glPopMatrix();
 		glPopMatrix();
 
 		glPushMatrix();
 			setColour(0, 0, 0);
-			glTranslatef(-0.5f, -bodyRadius, 0.0f); // Position the first skid
-			glScalef(0.3f, 1.5f, 0.3f); // Scale the skids
+			glTranslatef(-0.5f, -1.50f, 0.0f);
+			glScalef(0.3f, 1.0f, 0.3f);
 			glutSolidCube(1.0);
+
+			glPushMatrix();
+				setColour(0, 0, 0);
+				glTranslatef(0.0f, -0.5f, 0.0f);
+				glScalef(1.0f, 0.2f, 10.0f);
+				glutSolidCube(1.0);
+			glPopMatrix();
 		glPopMatrix();
 
-		glPushMatrix();
-			setColour(0, 0, 0);
-			glTranslatef(0.5f, -bodyRadius - 0.5f, 0.0f); // Position the third skid
-			glScalef(0.3f, 0.2f, 4.0f); // Scale the skids
-			glutSolidCube(1.0);
-		glPopMatrix();
-
-		glPushMatrix();
-			setColour(0, 0, 0);
-			glTranslatef(-0.5f, -bodyRadius - 0.5f, 0.0f); // Position the third skid
-			glScalef(0.3f, 0.2f, 4.0f); // Scale the skids
-			glutSolidCube(1.0);
-		glPopMatrix();
+		
 
 	glPopMatrix();
 
