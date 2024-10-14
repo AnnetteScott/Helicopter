@@ -46,7 +46,7 @@ typedef struct {
 
 //Helicopter
 const float maxRPM = 2000.0f;
-const float rotorRPM = 5.0f;
+const float rotorRPM = 20.0f;
 const float minY = 2.1f;
 const float moveSpeed = 5.0f;
 const float turnSpeed = 50.0f;
