@@ -17,6 +17,7 @@
 #include <freeglut.h>
 #include <math.h>
 #include <stdbool.h>
+#include <cstdio>
 
  /******************************************************************************
   * Animation & Timing Setup
@@ -45,10 +46,10 @@ typedef struct {
 } Point;
 
 //Helicopter
-const float maxRPM = 2000.0f;
-const float rotorRPM = 20.0f;
+const float maxRPS = 6.0f * 4; // 4 blades
+const float rotorIncreaseRPS = 1.5f * 4;
 const float minY = 2.1f;
-const float moveSpeed = 10.0f;
+const float moveSpeed = 8.0f;
 const float turnSpeed = 50.0f;
 float rotorSpeed = 0.0f;
 bool spinning = false;
@@ -167,6 +168,7 @@ void initLights(void);
 void drawGrid(float size, int divisions);
 void setColour(int r, int g, int b);
 void drawHelicopter();
+void moveHelicopter();
 
 /******************************************************************************
  * Animation-Specific Setup (Add your own definitions, constants, and globals here)
@@ -492,85 +494,36 @@ void init(void)
 */
 void think(void)
 {
+	// Spin the rotors
 	if (spinning) {
-		if (rotorSpeed < maxRPM) {
-			rotorSpeed += rotorRPM;
+		if (rotorSpeed < maxRPS) {
+			rotorSpeed += rotorIncreaseRPS * FRAME_TIME_SEC;
 		}
-		if (rotorSpeed > maxRPM) {
-			rotorSpeed = maxRPM;
+		if (rotorSpeed > maxRPS) {
+			rotorSpeed = maxRPS;
 		}
 
 		if (rotorAngle >= 360.0) {
 			rotorAngle -= 360.0;
 		}
+
+		if (tailRotorAngle >= 360.0) {
+			tailRotorAngle -= 360.0;
+		}
 	}
 	else if (rotorSpeed > 0) {
-		rotorSpeed -= rotorRPM;
+		rotorSpeed -= rotorIncreaseRPS * FRAME_TIME_SEC;
 		if (rotorSpeed < 0) {
 			rotorSpeed = 0;
 		}
 
 	}
 
-	rotorAngle += rotorSpeed * FRAME_TIME_SEC;
+	rotorAngle += rotorSpeed;
+	tailRotorAngle += (rotorSpeed * 5);
 
-	float yawRadians = heliRotation * (M_PI / 180.0f);
-	/*
-		Keyboard motion handler: complete this section to make your "player-controlled"
-		object respond to keyboard input.
-	*/
-	if (keyboardMotion.Yaw != MOTION_NONE) {
-		if (keyboardMotion.Yaw < 0) {
-			// Turn right (clockwise)
-			heliRotation -= turnSpeed * FRAME_TIME_SEC;
-		}
-		else {
-			// Turn left (anticlockwise)
-			heliRotation += turnSpeed * FRAME_TIME_SEC;
-		}
-	}
-	if (keyboardMotion.Surge != MOTION_NONE) {
-		if (keyboardMotion.Surge < 0) {
-			// Move backward
-			heliLocation.z -= moveSpeed * FRAME_TIME_SEC * cos(yawRadians);
-			heliLocation.x -= moveSpeed * FRAME_TIME_SEC * sin(yawRadians);
-		}
-		else {
-			// Move forward
-			heliLocation.z += moveSpeed * FRAME_TIME_SEC * cos(yawRadians);
-			heliLocation.x += moveSpeed * FRAME_TIME_SEC * sin(yawRadians);
-		}
-	}
-	if (keyboardMotion.Sway != MOTION_NONE) {
-		if (keyboardMotion.Sway < 0) {
-			// Strafe left
-			heliLocation.x += moveSpeed * FRAME_TIME_SEC * cos(yawRadians);
-			heliLocation.z -= moveSpeed * FRAME_TIME_SEC * sin(yawRadians);
-		}
-		else {
-			// Strafe right
-			heliLocation.x -= moveSpeed * FRAME_TIME_SEC * cos(yawRadians);
-			heliLocation.z += moveSpeed * FRAME_TIME_SEC * sin(yawRadians);
-		}
-	}
-	if (keyboardMotion.Heave != MOTION_NONE) {
-		if (keyboardMotion.Heave > 0) {
-			// Move up
-			spinning = true;
-			if (rotorSpeed >= maxRPM) {
-				heliLocation.y += moveSpeed * FRAME_TIME_SEC;
-			}
-		}
-		else if (keyboardMotion.Heave < 0) {
-			// Move down
-			heliLocation.y -= moveSpeed * FRAME_TIME_SEC;
-		}
-	}
-
-	if (heliLocation.y < minY) {
-		heliLocation.y = minY;
-		spinning = false;
-	}
+	moveHelicopter();
+	
 
 	cameraX = heliLocation.x - cameraDistance * sin(heliRotation * M_PI / 180.0f);
 	cameraY = heliLocation.y + cameraHeight;
@@ -594,6 +547,67 @@ void think(void)
 	glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
 	glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, light1_direction);
 	glLightf(GL_LIGHT1, GL_SPOT_CUTOFF, 30.0f); // Adjust the cutoff angle if needed
+}
+
+void moveHelicopter() {
+	float yawRadians = heliRotation * (M_PI / 180.0f);
+	/*
+		Keyboard motion handler: complete this section to make your "player-controlled"
+		object respond to keyboard input.
+	*/
+	bool rotorsAtSpeed = rotorSpeed >= maxRPS;
+	if (keyboardMotion.Yaw != MOTION_NONE && rotorsAtSpeed) {
+		if (keyboardMotion.Yaw < 0) {
+			// Turn right (clockwise)
+			heliRotation -= turnSpeed * FRAME_TIME_SEC;
+		}
+		else {
+			// Turn left (anticlockwise)
+			heliRotation += turnSpeed * FRAME_TIME_SEC;
+		}
+	}
+	if (keyboardMotion.Surge != MOTION_NONE && rotorsAtSpeed) {
+		if (keyboardMotion.Surge < 0) {
+			// Move backward
+			heliLocation.z -= moveSpeed * FRAME_TIME_SEC * cos(yawRadians);
+			heliLocation.x -= moveSpeed * FRAME_TIME_SEC * sin(yawRadians);
+		}
+		else {
+			// Move forward
+			heliLocation.z += moveSpeed * FRAME_TIME_SEC * cos(yawRadians);
+			heliLocation.x += moveSpeed * FRAME_TIME_SEC * sin(yawRadians);
+		}
+	}
+	if (keyboardMotion.Sway != MOTION_NONE && rotorsAtSpeed) {
+		if (keyboardMotion.Sway < 0) {
+			// Strafe left
+			heliLocation.x += moveSpeed * FRAME_TIME_SEC * cos(yawRadians);
+			heliLocation.z -= moveSpeed * FRAME_TIME_SEC * sin(yawRadians);
+		}
+		else {
+			// Strafe right
+			heliLocation.x -= moveSpeed * FRAME_TIME_SEC * cos(yawRadians);
+			heliLocation.z += moveSpeed * FRAME_TIME_SEC * sin(yawRadians);
+		}
+	}
+	if (keyboardMotion.Heave != MOTION_NONE) {
+		if (keyboardMotion.Heave > 0) {
+			// Move up
+			spinning = true;
+			if (rotorsAtSpeed) {
+				heliLocation.y += moveSpeed * FRAME_TIME_SEC;
+			}
+		}
+		else if (keyboardMotion.Heave < 0) {
+			// Move down
+			heliLocation.y -= moveSpeed * FRAME_TIME_SEC;
+		}
+	}
+
+	if (heliLocation.y < minY) {
+		heliLocation.y = minY;
+		spinning = false;
+	}
 }
 
 /*
@@ -639,9 +653,6 @@ void initLights(void)
 
 	// Make GL normalize the normal vectors we supply.
 	glEnable(GL_NORMALIZE);
-
-	// Enable use of simple GL colours as materials.
-	glEnable(GL_COLOR_MATERIAL);
 }
 
 void static setColour(int r, int g, int b) {
@@ -718,7 +729,7 @@ void drawHelicopter() {
 		glPushMatrix();
 			setColour(255, 255, 0);
 			glTranslatef(0.0f, 0.0f, -6.0f);
-			glRotatef(rotorAngle, 1.0f, 0.0f, 0.0f);
+			glRotatef(tailRotorAngle, 1.0f, 0.0f, 0.0f);
 			for (int i = 0; i < 4; ++i) {
 				glPushMatrix();
 					glRotatef(i * 90.0f, 1.0f, 0.0f, 0.0f);
