@@ -39,7 +39,7 @@ const float FRAME_TIME_SEC = (1000 / TARGET_FPS) / 1000.0f;
 unsigned int frameStartTime = 0;
 
 
-const float gridSize = 50.0f;
+const float gridSize = 250.0f;
 typedef struct {
 	float x, y, z;
 } Point;
@@ -48,7 +48,7 @@ typedef struct {
 const float maxRPM = 2000.0f;
 const float rotorRPM = 20.0f;
 const float minY = 2.1f;
-const float moveSpeed = 5.0f;
+const float moveSpeed = 10.0f;
 const float turnSpeed = 50.0f;
 float rotorSpeed = 0.0f;
 bool spinning = false;
@@ -575,6 +575,25 @@ void think(void)
 	cameraX = heliLocation.x - cameraDistance * sin(heliRotation * M_PI / 180.0f);
 	cameraY = heliLocation.y + cameraHeight;
 	cameraZ = heliLocation.z - cameraDistance * cos(heliRotation * M_PI / 180.0f);
+
+	// Position the spotlight at the front of the helicopter
+	GLfloat light1_position[] = {
+		heliLocation.x + 1.5f * sin(heliRotation * M_PI / 180.0f), // Front of the helicopter
+		heliLocation.y, // Use the helicopter's current height
+		heliLocation.z + 1.5f * cos(heliRotation * M_PI / 180.0f),
+		1.0f
+	};
+
+	// Direction vector pointing more downward
+	GLfloat light1_direction[] = {
+		sin(heliRotation * M_PI / 180.0f), // X direction
+		-1.0f,                            // Y direction (more downward)
+		cos(heliRotation * M_PI / 180.0f)  // Z direction
+	};
+
+	glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
+	glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, light1_direction);
+	glLightf(GL_LIGHT1, GL_SPOT_CUTOFF, 30.0f); // Adjust the cutoff angle if needed
 }
 
 /*
@@ -586,25 +605,37 @@ void think(void)
 */
 void initLights(void)
 {
-	// Simple lighting setup
-	GLfloat globalAmbient[] = { 0.4f, 0.4f, 0.4f, 1 };
-	GLfloat lightPosition[] = { 5.0f, 5.0f, 5.0f, 1.0f };
-	GLfloat ambientLight[] = { 0, 0, 0, 1 };
-	GLfloat diffuseLight[] = { 1, 1, 1, 1 };
-	GLfloat specularLight[] = { 1, 1, 1, 1 };
-
-	// Configure global ambient lighting.
-	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, globalAmbient);
-
-	// Configure Light 0.
-	glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
-	glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight);
-	glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight);
-	glLightfv(GL_LIGHT0, GL_SPECULAR, specularLight);
-
 	// Enable lighting
 	glEnable(GL_LIGHTING);
+
+	/// Directional light
+	GLfloat light0_position[] = { 1.0f, 1.0f, 1.0f, 0.0f };
+	GLfloat light0_ambient[] = { 0.1f, 0.1f, 0.1f, 1.0f };
+	GLfloat light0_diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	GLfloat light0_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+	glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
+	glLightfv(GL_LIGHT0, GL_AMBIENT, light0_ambient);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, light0_specular);
+
 	glEnable(GL_LIGHT0);
+
+	// Set up the helicopter spotlight
+	GLfloat light1_position[] = { 0.0f, 5.0f, 0.0f, 1.0f };
+	GLfloat light1_direction[] = { 0.0f, -1.0f, 0.0f };
+	GLfloat light1_ambient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	GLfloat light1_diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	GLfloat light1_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+	glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
+	glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, light1_direction);
+	glLightf(GL_LIGHT1, GL_SPOT_CUTOFF, 45.0f);
+	glLightfv(GL_LIGHT1, GL_AMBIENT, light1_ambient);
+	glLightfv(GL_LIGHT1, GL_DIFFUSE, light1_diffuse);
+	glLightfv(GL_LIGHT1, GL_SPECULAR, light1_specular);
+
+	glEnable(GL_LIGHT1);
 
 	// Make GL normalize the normal vectors we supply.
 	glEnable(GL_NORMALIZE);
@@ -630,6 +661,7 @@ void drawGrid(float size, int squareSize) {
 			float z1 = z0 + squareSize;
 
 			glBegin(GL_QUADS);
+			glNormal3f(0.0f, 1.0f, 0.0f);
 			glVertex3f(x0, 0.0f, z0);
 			glVertex3f(x1, 0.0f, z0);
 			glVertex3f(x1, 0.0f, z1);
