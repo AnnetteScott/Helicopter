@@ -16,11 +16,14 @@
 #include <Windows.h>
 #include <freeglut.h>
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
  /******************************************************************************
   * Animation & Timing Setup
   ******************************************************************************/
+#pragma warning(disable : 4996)
 
   // Target frame rate (number of Frames Per Second).
 #define TARGET_FPS 60				
