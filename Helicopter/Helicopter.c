@@ -69,6 +69,11 @@ float cameraX = 0.0f;
 float cameraY = 5.0f;
 float cameraZ = 20.0f;
 
+#define textureWidth  32
+#define textureHeight 32
+GLubyte groundTexture[textureWidth][textureHeight][3];
+GLubyte heliTexture[textureWidth][textureHeight][3];
+
 /******************************************************************************
  * Some Simple Definitions of Motion
  ******************************************************************************/
@@ -171,9 +176,7 @@ void drawGrid(float size, int divisions);
 void setColour(int r, int g, int b);
 void drawHelicopter();
 void moveHelicopter();
-void createTexture(void);
-#define textureWidth  64
-#define textureHeight 64
+void createTexture(GLubyte(*myTexture)[textureWidth][textureHeight][3], char fileName[50]);
 
 /******************************************************************************
  * Animation-Specific Setup (Add your own definitions, constants, and globals here)
@@ -489,7 +492,8 @@ void init(void)
 	glEnable(GL_DEPTH_TEST); // Enable depth testing
 	initLights();
 
-	createTexture();
+	createTexture(groundTexture, "Moss.ppm");
+	createTexture(heliTexture, "Stainless.ppm");
 	// Anything that relies on lighting or specifies normals must be initialised after initLights.
 }
 
@@ -672,6 +676,9 @@ void drawGrid(float size, int squareSize) {
 	int divisions = size / squareSize;
 	float halfGridSize = size / 2.0f;
 
+	// set the current texture
+	glTexImage2D(GL_TEXTURE_2D, 0, 3, textureWidth, textureHeight, 0,
+		GL_RGB, GL_UNSIGNED_BYTE, groundTexture);
 	// enable texture mapping
 	glEnable(GL_TEXTURE_2D);
 	for (int i = 0; i < divisions; ++i) {
@@ -703,6 +710,10 @@ void drawGrid(float size, int squareSize) {
 }
 
 void drawHelicopter() {
+	// set the current texture
+	glTexImage2D(GL_TEXTURE_2D, 0, 3, textureWidth, textureHeight, 0,
+		GL_RGB, GL_UNSIGNED_BYTE, heliTexture);
+	glEnable(GL_TEXTURE_2D);
 	glPushMatrix();
 		glTranslatef(heliLocation.x, heliLocation.y, heliLocation.z);
 		glRotatef(heliRotation, 0.0f, 1.0f, 0.0f);
@@ -790,13 +801,14 @@ void drawHelicopter() {
 		glPopMatrix();
 
 	glPopMatrix();
+	glDisable(GL_TEXTURE_2D);
 
 }
 
 /*
-	Create a random texture
+	Read file and create texture
 */
-void createTexture(void)
+void createTexture(GLubyte(*myTexture)[textureWidth][textureHeight][3], char fileName[50])
 {
 	char headerLine[100];
 	char tempChar;
@@ -804,7 +816,7 @@ void createTexture(void)
 	int red, green, blue;
 	float RGBScaling;
 
-	FILE* fileID = fopen("Moss.ppm", "r");
+	FILE* fileID = fopen(fileName, "r");
 	fscanf(fileID, "%[^\n] ", headerLine);
 
 	if ((headerLine[0] != 'P') || (headerLine[1] != '3'))
@@ -860,7 +872,6 @@ void createTexture(void)
 		}
 	}
 
-	GLubyte myTexture[textureWidth][textureHeight][3];
 	int s, t;
 
 	// enable texture mapping
@@ -871,10 +882,9 @@ void createTexture(void)
 	{
 		for (t = 0; t < textureHeight; t++)
 		{
-			// assign a random color
-			myTexture[s][t][0] = imageData[3 * (s * textureHeight + t)];
-			myTexture[s][t][1] = imageData[3 * (s * textureHeight + t) + 1];
-			myTexture[s][t][2] = imageData[3 * (s * textureHeight + t) + 2];
+			(*myTexture)[s][t][0] = imageData[3 * (s * textureHeight + t)];
+            (*myTexture)[s][t][1] = imageData[3 * (s * textureHeight + t) + 1];
+            (*myTexture)[s][t][2] = imageData[3 * (s * textureHeight + t) + 2];
 		}
 	}
 
@@ -887,10 +897,6 @@ void createTexture(void)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-
-	// set the current texture
-	glTexImage2D(GL_TEXTURE_2D, 0, 3, textureWidth, textureHeight, 0,
-		GL_RGB, GL_UNSIGNED_BYTE, myTexture);
-
+	free(imageData);
 }
 /******************************************************************************/
