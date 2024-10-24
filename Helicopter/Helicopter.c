@@ -20,12 +20,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
- /******************************************************************************
-  * Animation & Timing Setup
-  ******************************************************************************/
+/******************************************************************************
+ * Animation & Timing Setup
+ ******************************************************************************/
 #pragma warning(disable : 4996)
 
-  // Target frame rate (number of Frames Per Second).
+// Target frame rate (number of Frames Per Second).
 #define TARGET_FPS 60				
 #define M_PI 3.14159f
 
@@ -83,12 +83,12 @@ float cameraZ = 20.0f;
 #define MOTION_DOWN -1				// Downward motion.
 #define MOTION_UP 1					// Upward motion.
 
- // Represents the motion of an object on four axes (Yaw, Surge, Sway, and Heave).
- // 
- // You can use any numeric values, as specified in the comments for each axis. However,
- // the MOTION_ definitions offer an easy way to define a "unit" movement without using
- // magic numbers (e.g. instead of setting Surge = 1, you can set Surge = MOTION_FORWARD).
- //
+// Represents the motion of an object on four axes (Yaw, Surge, Sway, and Heave).
+// 
+// You can use any numeric values, as specified in the comments for each axis. However,
+// the MOTION_ definitions offer an easy way to define a "unit" movement without using
+// magic numbers (e.g. instead of setting Surge = 1, you can set Surge = MOTION_FORWARD).
+//
 typedef struct {
 	int Yaw;		// Turn about the Z axis	[<0 = Clockwise, 0 = Stop, >0 = Anticlockwise]
 	int Surge;		// Move forward or back		[<0 = Backward,	0 = Stop, >0 = Forward]
@@ -100,7 +100,7 @@ typedef struct {
  * Keyboard Input Handling Setup
  ******************************************************************************/
 
- // Represents the state of a single keyboard key.Represents the state of a single keyboard key.
+// Represents the state of a single keyboard key.Represents the state of a single keyboard key.
 typedef enum {
 	KEYSTATE_UP = 0,	// Key is not pressed.
 	KEYSTATE_DOWN		// Key is pressed down.
@@ -179,7 +179,7 @@ void createTexture(void);
  * Animation-Specific Setup (Add your own definitions, constants, and globals here)
  ******************************************************************************/
 
- // Render objects as filled polygons (1) or wireframes (0). Default filled.
+// Render objects as filled polygons (1) or wireframes (0). Default filled.
 int renderFillEnabled = 1;
 
 /******************************************************************************
@@ -220,13 +220,13 @@ void main(int argc, char** argv)
  * GLUT Callbacks (don't add any other functions here)
  ******************************************************************************/
 
- /*
-	 Called when GLUT wants us to (re)draw the current animation frame.
+/*
+	Called when GLUT wants us to (re)draw the current animation frame.
 
-	 Note: This function must not do anything to update the state of our simulated
-	 world. Animation (moving or rotating things, responding to keyboard input,
-	 etc.) should only be performed within the think() function provided below.
- */
+	Note: This function must not do anything to update the state of our simulated
+	world. Animation (moving or rotating things, responding to keyboard input,
+	etc.) should only be performed within the think() function provided below.
+*/
 void display(void)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -480,9 +480,9 @@ void idle(void)
  * Animation-Specific Functions (Add your own functions at the end of this section)
  ******************************************************************************/
 
- /*
-	 Initialise OpenGL and set up our scene before we begin the render loop.
- */
+/*
+	Initialise OpenGL and set up our scene before we begin the render loop.
+*/
 void init(void)
 {
 	glClearColor(0.53f, 0.81f, 0.92f, 1.0f); // RGBA for a sky blue color
@@ -798,8 +798,67 @@ void drawHelicopter() {
 */
 void createTexture(void)
 {
-	FILE* fileID = fopen("sea02.ppm", "r");
+	char headerLine[100];
+	char tempChar;
+	int imageWidth, imageHeight, maxValue, totalPixels;
+	int red, green, blue;
+	float RGBScaling;
 
+	FILE* fileID = fopen("Moss.ppm", "r");
+	fscanf(fileID, "%[^\n] ", headerLine);
+
+	if ((headerLine[0] != 'P') || (headerLine[1] != '3'))
+	{
+		printf("This is not a PPM file!\n");
+		exit(0);
+	}
+
+	printf("This is a PPM file\n");
+	fscanf(fileID, "%c", &tempChar);
+
+	// While there is still comment lines
+	while (tempChar == '#')
+	{
+		fscanf(fileID, "%[^\n] ", headerLine);
+		printf("%s\n", headerLine);
+		fscanf(fileID, "%c", &tempChar);
+	}
+
+	ungetc(tempChar, fileID);
+	fscanf(fileID, "%d %d %d", &imageWidth, &imageHeight, &maxValue);
+	// print out the information about the image file
+	printf("%d rows  %d columns  max value= %d\n", imageHeight, imageWidth, maxValue);
+	totalPixels = imageWidth * imageHeight;
+	RGBScaling = 255.0 / maxValue;
+
+	GLubyte *imageData;
+	imageData = malloc(3 * sizeof(GLuint) * totalPixels);
+	if (maxValue == 255)
+	{
+		for (int i = 0; i < totalPixels; i++)
+		{
+			// Read in the current pixel from the file
+			fscanf(fileID, "%d %d %d", &red, &green, &blue);
+
+			// Store the red, green, and blue data of the current pixel in the data array
+			imageData[3 * i] = (GLubyte)red;
+			imageData[3 * i + 1] = (GLubyte)green;
+			imageData[3 * i + 2] = (GLubyte)blue;
+		}
+	}
+	else  // Need to scale up the data values
+	{
+		for (int i = 0; i < totalPixels; i++)
+		{
+			// Read in the current pixel from the file
+			fscanf(fileID, "%d %d %d", &red, &green, &blue);
+
+			// Store the red, green, and blue data of the current pixel in the data array
+			imageData[3 * i] = (GLubyte)(red * RGBScaling);
+			imageData[3 * i + 1] = (GLubyte)(green * RGBScaling);
+			imageData[3 * i + 2] = (GLubyte)(blue * RGBScaling);
+		}
+	}
 
 	GLubyte myTexture[textureWidth][textureHeight][3];
 	int s, t;
@@ -813,9 +872,9 @@ void createTexture(void)
 		for (t = 0; t < textureHeight; t++)
 		{
 			// assign a random color
-			myTexture[s][t][0] = (GLubyte)(255 * rand() / RAND_MAX);
-			myTexture[s][t][1] = (GLubyte)(255 * rand() / RAND_MAX);
-			myTexture[s][t][2] = (GLubyte)(255 * rand() / RAND_MAX);
+			myTexture[s][t][0] = imageData[3 * (s * textureHeight + t)];
+			myTexture[s][t][1] = imageData[3 * (s * textureHeight + t) + 1];
+			myTexture[s][t][2] = imageData[3 * (s * textureHeight + t) + 2];
 		}
 	}
 
