@@ -171,6 +171,9 @@ void drawGrid(float size, int divisions);
 void setColour(int r, int g, int b);
 void drawHelicopter();
 void moveHelicopter();
+void createTexture(void);
+#define textureWidth  64
+#define textureHeight 64
 
 /******************************************************************************
  * Animation-Specific Setup (Add your own definitions, constants, and globals here)
@@ -240,6 +243,9 @@ void display(void)
 	else {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	}
+
+	// make sure the current drawing color is white for texturing
+	glColor3f(1, 1, 1);
 
 	// Draw the filled grid
 	drawGrid(gridSize, 1);
@@ -483,6 +489,7 @@ void init(void)
 	glEnable(GL_DEPTH_TEST); // Enable depth testing
 	initLights();
 
+	createTexture();
 	// Anything that relies on lighting or specifies normals must be initialised after initLights.
 }
 
@@ -658,14 +665,15 @@ void initLights(void)
 }
 
 void static setColour(int r, int g, int b) {
-	glColor3f(r / 255.0f, g / 255.0f, b / 255.0f);
+	
 }
 
 void drawGrid(float size, int squareSize) {
 	int divisions = size / squareSize;
 	float halfGridSize = size / 2.0f;
 
-	setColour(55, 92, 49);
+	// enable texture mapping
+	glEnable(GL_TEXTURE_2D);
 	for (int i = 0; i < divisions; ++i) {
 		for (int j = 0; j < divisions; ++j) {
 			float x0 = -halfGridSize + i * squareSize;
@@ -675,13 +683,23 @@ void drawGrid(float size, int squareSize) {
 
 			glBegin(GL_QUADS);
 			glNormal3f(0.0f, 1.0f, 0.0f);
+			
+			glTexCoord2f(0, 0);
 			glVertex3f(x0, 0.0f, z0);
+
+			glTexCoord2f(2, 0);
 			glVertex3f(x1, 0.0f, z0);
+
+			glTexCoord2f(2, 2);
 			glVertex3f(x1, 0.0f, z1);
+
+			glTexCoord2f(0, 2);
 			glVertex3f(x0, 0.0f, z1);
 			glEnd();
 		}
 	}
+
+	glDisable(GL_TEXTURE_2D);
 }
 
 void drawHelicopter() {
@@ -772,6 +790,48 @@ void drawHelicopter() {
 		glPopMatrix();
 
 	glPopMatrix();
+
+}
+
+/*
+	Create a random texture
+*/
+void createTexture(void)
+{
+	FILE* fileID = fopen("sea02.ppm", "r");
+
+
+	GLubyte myTexture[textureWidth][textureHeight][3];
+	int s, t;
+
+	// enable texture mapping
+	glEnable(GL_TEXTURE_2D);
+
+	// for each texture element
+	for (s = 0; s < textureWidth; s++)
+	{
+		for (t = 0; t < textureHeight; t++)
+		{
+			// assign a random color
+			myTexture[s][t][0] = (GLubyte)(255 * rand() / RAND_MAX);
+			myTexture[s][t][1] = (GLubyte)(255 * rand() / RAND_MAX);
+			myTexture[s][t][2] = (GLubyte)(255 * rand() / RAND_MAX);
+		}
+	}
+
+	// tell openGL how to scale the texture image up if needed
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	// tell openGL how to scale the texture image down if needed
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+	// set the wrapping function for the S and T texture directions
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+
+	// set the current texture
+	glTexImage2D(GL_TEXTURE_2D, 0, 3, textureWidth, textureHeight, 0,
+		GL_RGB, GL_UNSIGNED_BYTE, myTexture);
 
 }
 /******************************************************************************/
