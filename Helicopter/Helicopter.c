@@ -279,8 +279,8 @@ void display(void)
 	drawWindmill(-20.0f, 50.0f, windmillAngle);
 
 	// Draw trees
-	for (float x = -50.0f; x <= 50.0f; x += 5.0f) {
-		for (float z = -60.0f; z <= -20.0f; z += 5.0f) {
+	for (float x = -60.0f; x <= 60.0f; x += 5.0f) {
+		for (float z = -100.0f; z <= -20.0f; z += 5.0f) {
 			drawTree(x, z);
 		}
 	}
@@ -518,7 +518,7 @@ void init(void)
 	glEnable(GL_DEPTH_TEST); // Enable depth testing
 	initLights();
 
-	createTexture(groundTexture, "Moss.ppm");
+	createTexture(groundTexture, "Dirt.ppm");
 	createTexture(buildingTexture, "Brick.ppm");
 	// Anything that relies on lighting or specifies normals must be initialised after initLights.
 }
@@ -703,8 +703,9 @@ void drawGrid(float size, int squareSize) {
 	// Set the current texture
 	glTexImage2D(GL_TEXTURE_2D, 0, 3, textureWidth, textureHeight, 0,
 		GL_RGB, GL_UNSIGNED_BYTE, groundTexture);
-	// Enable texture mapping
 	glEnable(GL_TEXTURE_2D);
+
+	float textureScale = 0.1f;
 
 	for (int i = 0; i < divisions; ++i) {
 		for (int j = 0; j < divisions; ++j) {
@@ -716,16 +717,16 @@ void drawGrid(float size, int squareSize) {
 			glBegin(GL_QUADS);
 			glNormal3f(0.0f, 1.0f, 0.0f);
 
-			glTexCoord2f(0, 0);
+			glTexCoord2f(i * textureScale, j * textureScale);
 			glVertex3f(x0, 0.0f, z0);
 
-			glTexCoord2f(2, 0);
+			glTexCoord2f((i + 1) * textureScale, j * textureScale);
 			glVertex3f(x1, 0.0f, z0);
 
-			glTexCoord2f(2, 2);
+			glTexCoord2f((i + 1) * textureScale, (j + 1) * textureScale);
 			glVertex3f(x1, 0.0f, z1);
 
-			glTexCoord2f(0, 2);
+			glTexCoord2f(i * textureScale, (j + 1) * textureScale);
 			glVertex3f(x0, 0.0f, z1);
 			glEnd();
 		}
@@ -841,9 +842,7 @@ void drawBuilding(float x, float z, float height) {
 			GL_RGB, GL_UNSIGNED_BYTE, buildingTexture);
 		glEnable(GL_TEXTURE_2D);
 
-		// Draw the building with tiled texture
 		glBegin(GL_QUADS);
-
 		// Front face
 		glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.5f, -0.5f, 0.5f);
 		glTexCoord2f(1.0f, 0.0f); glVertex3f(0.5f, -0.5f, 0.5f);
@@ -875,35 +874,32 @@ void drawBuilding(float x, float z, float height) {
 		glTexCoord2f(0.0f, 1.0f); glVertex3f(-0.5f, 0.5f, 0.5f);
 
 		glEnd();
-
-		// Disable texture mapping
 		glDisable(GL_TEXTURE_2D);
 	glPopMatrix();
 }
 
 void drawWindmill(float x, float z, float angle) {
 	glPushMatrix();
-		glTranslatef(x, 10.0f, z); // Position the windmill so that its base is at ground level
+		glTranslatef(x, 10.0f, z);
 
-		// Draw base (20 meters high)
-		GLfloat baseDiffuse[] = {0.5f, 0.5f, 0.5f, 1.0f}; // Grey color
+		GLfloat baseDiffuse[] = {0.5f, 0.5f, 0.5f, 1.0f};
 		glMaterialfv(GL_FRONT, GL_DIFFUSE, baseDiffuse);
 		glPushMatrix();
-			glScalef(1.0f, 20.0f, 1.0f); // Scale to 20 meters high
+			glScalef(1.0f, 20.0f, 1.0f);
 			glutSolidCube(1.0);
 		glPopMatrix();
 
 		// Draw blades
-		glTranslatef(0.0f, 10.0f, -0.5f); // Move to the top of the base
-		glRotatef(angle, 0.0f, 0.0f, 1.0f); // Rotate the blades
+		glTranslatef(0.0f, 10.0f, -0.5f);
+		glRotatef(angle, 0.0f, 0.0f, 1.0f);
 
-		GLfloat bladeDiffuse[] = {1.0f, 1.0f, 1.0f, 1.0f}; // White color
+		GLfloat bladeDiffuse[] = {1.0f, 1.0f, 1.0f, 1.0f};
 		glMaterialfv(GL_FRONT, GL_DIFFUSE, bladeDiffuse);
-		for (int i = 0; i < 3; ++i) { // Draw 3 blades
+		for (int i = 0; i < 3; ++i) {
 			glPushMatrix();
-				glRotatef(i * 120.0f, 0.0f, 0.0f, 1.0f); // 120 degrees apart
-				glTranslatef(0.0f, 5.0f, 0.0f); // Adjust blade length
-				glScalef(1.0f, 10.0f, 0.2f); // Scale blades
+				glRotatef(i * 120.0f, 0.0f, 0.0f, 1.0f);
+				glTranslatef(0.0f, 5.0f, 0.0f);
+				glScalef(1.0f, 10.0f, 0.2f);
 				glutSolidCube(1.0);
 			glPopMatrix();
 		}
@@ -915,24 +911,23 @@ void drawTree(float x, float z) {
     glPushMatrix();
         glTranslatef(x, 0, z);
 
-        // Draw trunk (4 meters tall)
-        GLfloat trunkDiffuse[] = {0.55f, 0.27f, 0.07f, 1.0f}; // Brown color
+        GLfloat trunkDiffuse[] = {0.55f, 0.27f, 0.07f, 1.0f};
         glMaterialfv(GL_FRONT, GL_DIFFUSE, trunkDiffuse);
         glPushMatrix();
-            glRotatef(-90, 1.0f, 0.0f, 0.0f); // Rotate cylinder to stand upright
+            glRotatef(-90, 1.0f, 0.0f, 0.0f);
             GLUquadric* quad = gluNewQuadric();
-            gluCylinder(quad, 0.5, 0.2, 4.0, 20, 20); // Cylinder with height 4 meters
+            gluCylinder(quad, 0.5, 0.2, 4.0, 20, 20);
             gluDeleteQuadric(quad);
         glPopMatrix();
 
-        // Draw leaves (2 meters tall)
-        glTranslatef(0.0f, 4.0f, 0.0f); // Position leaves at the top of the trunk
-        GLfloat leavesDiffuse[] = {0.0f, 0.8f, 0.0f, 1.0f}; // Green color
+        // Draw leaves
+        glTranslatef(0.0f, 4.0f, 0.0f);
+        GLfloat leavesDiffuse[] = {0.0f, 0.8f, 0.0f, 1.0f};
         glMaterialfv(GL_FRONT, GL_DIFFUSE, leavesDiffuse);
         glPushMatrix();
-            glRotatef(-90, 1.0f, 0.0f, 0.0f); // Rotate cone to stand upright
-            glScalef(1.0f, 1.0f, 1.0f); // Uniform scaling
-            glutSolidCone(1.0, 2.0, 20, 20); // Adjusted height to 2 meters
+            glRotatef(-90, 1.0f, 0.0f, 0.0f);
+            glScalef(1.0f, 1.0f, 1.0f);
+            glutSolidCone(1.0, 2.0, 20, 20);
         glPopMatrix();
     glPopMatrix();
 }
