@@ -50,6 +50,7 @@ typedef struct {
 //Helicopter
 const float maxRPS = 6.0f * 4; // 4 blades
 const float rotorIncreaseRPS = 1.5f * 4;
+const float rotorIncreaseRPS = 3.0f * 4;
 const float minY = 2.1f;
 const float moveSpeed = 8.0f;
 const float turnSpeed = 50.0f;
@@ -520,7 +521,14 @@ void init(void)
 
 	createTexture(groundTexture, "Dirt.ppm");
 	createTexture(buildingTexture, "Brick.ppm");
-	// Anything that relies on lighting or specifies normals must be initialised after initLights.
+
+	// Fog settings
+	GLfloat fogColor[] = {0.6f, 0.81f, 0.92f, 1.0f};
+	glEnable(GL_FOG);
+	glFogfv(GL_FOG_COLOR, fogColor);
+	glFogi(GL_FOG_MODE, GL_EXP2);
+	glFogf(GL_FOG_DENSITY, 0.02f);
+	glHint(GL_FOG_HINT, GL_NICEST);
 }
 
 /*
@@ -570,6 +578,9 @@ void think(void)
 	cameraX = heliLocation.x - cameraDistance * sin(heliRotation * M_PI / 180.0f);
 	cameraY = heliLocation.y + cameraHeight;
 	cameraZ = heliLocation.z - cameraDistance * cos(heliRotation * M_PI / 180.0f);
+
+	GLfloat fogDensity = 0.02f + (cameraY / 100.0f) * 0.05f; // Example adjustment
+	glFogf(GL_FOG_DENSITY, fogDensity);
 
 	// Position the spotlight at the front of the helicopter
 	GLfloat light1_position[] = {
@@ -908,28 +919,28 @@ void drawWindmill(float x, float z, float angle) {
 }
 
 void drawTree(float x, float z) {
-    glPushMatrix();
-        glTranslatef(x, 0, z);
+	glPushMatrix();
+		glTranslatef(x, 0, z);
 
-        GLfloat trunkDiffuse[] = {0.55f, 0.27f, 0.07f, 1.0f};
-        glMaterialfv(GL_FRONT, GL_DIFFUSE, trunkDiffuse);
-        glPushMatrix();
-            glRotatef(-90, 1.0f, 0.0f, 0.0f);
-            GLUquadric* quad = gluNewQuadric();
-            gluCylinder(quad, 0.5, 0.2, 4.0, 20, 20);
-            gluDeleteQuadric(quad);
-        glPopMatrix();
+		GLfloat trunkDiffuse[] = {0.55f, 0.27f, 0.07f, 1.0f};
+		glMaterialfv(GL_FRONT, GL_DIFFUSE, trunkDiffuse);
+		glPushMatrix();
+			glRotatef(-90, 1.0f, 0.0f, 0.0f);
+			GLUquadric* quad = gluNewQuadric();
+			gluCylinder(quad, 0.5, 0.2, 4.0, 20, 20);
+			gluDeleteQuadric(quad);
+		glPopMatrix();
 
-        // Draw leaves
-        glTranslatef(0.0f, 4.0f, 0.0f);
-        GLfloat leavesDiffuse[] = {0.0f, 0.8f, 0.0f, 1.0f};
-        glMaterialfv(GL_FRONT, GL_DIFFUSE, leavesDiffuse);
-        glPushMatrix();
-            glRotatef(-90, 1.0f, 0.0f, 0.0f);
-            glScalef(1.0f, 1.0f, 1.0f);
-            glutSolidCone(1.0, 2.0, 20, 20);
-        glPopMatrix();
-    glPopMatrix();
+		// Draw leaves
+		glTranslatef(0.0f, 4.0f, 0.0f);
+		GLfloat leavesDiffuse[] = {0.0f, 0.8f, 0.0f, 1.0f};
+		glMaterialfv(GL_FRONT, GL_DIFFUSE, leavesDiffuse);
+		glPushMatrix();
+			glRotatef(-90, 1.0f, 0.0f, 0.0f);
+			glScalef(1.0f, 1.0f, 1.0f);
+			glutSolidCone(1.0, 2.0, 20, 20);
+		glPopMatrix();
+	glPopMatrix();
 }
 
 
