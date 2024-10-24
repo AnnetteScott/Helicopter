@@ -173,10 +173,10 @@ void init(void);
 void think(void);
 void initLights(void);
 void drawGrid(float size, int divisions);
-void setColour(int r, int g, int b);
 void drawHelicopter();
 void moveHelicopter();
 void createTexture(GLubyte(*myTexture)[textureWidth][textureHeight][3], char fileName[50]);
+void drawBuilding(float x, float z, float height);
 
 /******************************************************************************
  * Animation-Specific Setup (Add your own definitions, constants, and globals here)
@@ -254,6 +254,10 @@ void display(void)
 	drawGrid(gridSize, 1);
 
 	drawHelicopter();
+
+	// Draw buildings
+    drawBuilding(10.0f, 10.0f, 10.0f);
+    drawBuilding(-10.0f, -10.0f, 10.0f);
 
 	glutSwapBuffers();
 }
@@ -452,10 +456,6 @@ void specialKeyReleased(int key, int x, int y)
 
 /*
 	Called by GLUT when it's not rendering a frame.
-
-	Note: We use this to handle animation and timing. You shouldn't need to modify
-	this callback at all. Instead, place your animation logic (e.g. moving or rotating
-	things) within the think() method provided with this template.
 */
 void idle(void)
 {
@@ -499,11 +499,6 @@ void init(void)
 
 /*
 	Advance our animation by FRAME_TIME milliseconds.
-
-	Note: Our template's GLUT idle() callback calls this once before each new
-	frame is drawn, EXCEPT the very first frame drawn after our application
-	starts. Any setup required before the first frame is drawn should be placed
-	in init().
 */
 void think(void)
 {
@@ -537,7 +532,6 @@ void think(void)
 
 	moveHelicopter();
 	
-
 	cameraX = heliLocation.x - cameraDistance * sin(heliRotation * M_PI / 180.0f);
 	cameraY = heliLocation.y + cameraHeight;
 	cameraZ = heliLocation.z - cameraDistance * cos(heliRotation * M_PI / 180.0f);
@@ -625,10 +619,6 @@ void moveHelicopter() {
 
 /*
 	Initialise OpenGL lighting before we begin the render loop.
-
-	Note (advanced): If you're using dynamic lighting (e.g. lights that move around, turn on or
-	off, or change colour) you may want to replace this with a drawLights function that gets called
-	at the beginning of display() instead of init().
 */
 void initLights(void)
 {
@@ -668,19 +658,19 @@ void initLights(void)
 	glEnable(GL_NORMALIZE);
 }
 
-void static setColour(int r, int g, int b) {
-	
-}
-
 void drawGrid(float size, int squareSize) {
 	int divisions = size / squareSize;
 	float halfGridSize = size / 2.0f;
 
-	// set the current texture
+	GLfloat gridDiffuse[] = {0.5f, 0.5f, 0.5f, 1.0f};
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, gridDiffuse);
+
+	// Set the current texture
 	glTexImage2D(GL_TEXTURE_2D, 0, 3, textureWidth, textureHeight, 0,
 		GL_RGB, GL_UNSIGNED_BYTE, groundTexture);
-	// enable texture mapping
+	// Enable texture mapping
 	glEnable(GL_TEXTURE_2D);
+
 	for (int i = 0; i < divisions; ++i) {
 		for (int j = 0; j < divisions; ++j) {
 			float x0 = -halfGridSize + i * squareSize;
@@ -690,7 +680,7 @@ void drawGrid(float size, int squareSize) {
 
 			glBegin(GL_QUADS);
 			glNormal3f(0.0f, 1.0f, 0.0f);
-			
+
 			glTexCoord2f(0, 0);
 			glVertex3f(x0, 0.0f, z0);
 
@@ -710,21 +700,23 @@ void drawGrid(float size, int squareSize) {
 }
 
 void drawHelicopter() {
-	// set the current texture
-	glTexImage2D(GL_TEXTURE_2D, 0, 3, textureWidth, textureHeight, 0,
-		GL_RGB, GL_UNSIGNED_BYTE, heliTexture);
-	glEnable(GL_TEXTURE_2D);
+	// Define material properties
+	GLfloat redDiffuse[] = {1.0f, 0.0f, 0.0f, 1.0f};
+	GLfloat yellowDiffuse[] = {1.0f, 1.0f, 0.0f, 1.0f};
+	GLfloat blackDiffuse[] = {0.0f, 0.0f, 0.0f, 1.0f};
+
 	glPushMatrix();
 		glTranslatef(heliLocation.x, heliLocation.y, heliLocation.z);
 		glRotatef(heliRotation, 0.0f, 1.0f, 0.0f);
+
 		// Body
-		setColour(255, 0, 0);
+		glMaterialfv(GL_FRONT, GL_DIFFUSE, redDiffuse);
 		glScalef(1.0f, 1.0f, 1.2f);
-		glutSolidSphere(1.50f, 20, 20);
+		glutSolidSphere(1.50f, 10, 10);
 
 		// Main rotor
 		glPushMatrix();
-			setColour(255, 255, 0);
+			glMaterialfv(GL_FRONT, GL_DIFFUSE, yellowDiffuse);
 			glTranslatef(0.0f, 1.50f, 0.0f);
 			glScalef(1.0f, 1.0f, 1.0f);
 			glRotatef(rotorAngle, 0.0f, 1.0f, 0.0f);
@@ -742,23 +734,22 @@ void drawHelicopter() {
 
 		// Tail
 		glPushMatrix();
-			setColour(255, 0, 0);
+			glMaterialfv(GL_FRONT, GL_DIFFUSE, redDiffuse);
 			glTranslatef(0.0f, 0.0f, -3.0f);
 			glScalef(0.5f, 0.6f, 6.0f);
 			glutSolidCube(1.0);
 
 			glPushMatrix();
 				glTranslatef(0.0f, 0.0f, -0.5f);
-				setColour(255, 0, 0);
+				glMaterialfv(GL_FRONT, GL_DIFFUSE, redDiffuse);
 				glScalef(1.0f, 1.0f, 0.16f);
 				glutSolidSphere(0.5f, 20, 20);
 			glPopMatrix();
 		glPopMatrix();
 
-
 		// Tail rotors
 		glPushMatrix();
-			setColour(255, 255, 0);
+			glMaterialfv(GL_FRONT, GL_DIFFUSE, yellowDiffuse);
 			glTranslatef(0.0f, 0.0f, -6.0f);
 			glRotatef(tailRotorAngle, 1.0f, 0.0f, 0.0f);
 			for (int i = 0; i < 4; ++i) {
@@ -773,13 +764,13 @@ void drawHelicopter() {
 
 		// Landing skids
 		glPushMatrix();
-			setColour(0, 0, 0);
+			glMaterialfv(GL_FRONT, GL_DIFFUSE, blackDiffuse);
 			glTranslatef(0.5f, -1.50f, 0.0f);
 			glScalef(0.3f, 1.0f, 0.3f);
 			glutSolidCube(1.0);
 
 			glPushMatrix();
-				setColour(0, 0, 0);
+				glMaterialfv(GL_FRONT, GL_DIFFUSE, blackDiffuse);
 				glTranslatef(0.0f, -0.5f, 0.0f);
 				glScalef(1.0f, 0.2f, 10.0f);
 				glutSolidCube(1.0);
@@ -787,13 +778,13 @@ void drawHelicopter() {
 		glPopMatrix();
 
 		glPushMatrix();
-			setColour(0, 0, 0);
+			glMaterialfv(GL_FRONT, GL_DIFFUSE, blackDiffuse);
 			glTranslatef(-0.5f, -1.50f, 0.0f);
 			glScalef(0.3f, 1.0f, 0.3f);
 			glutSolidCube(1.0);
 
 			glPushMatrix();
-				setColour(0, 0, 0);
+				glMaterialfv(GL_FRONT, GL_DIFFUSE, blackDiffuse);
 				glTranslatef(0.0f, -0.5f, 0.0f);
 				glScalef(1.0f, 0.2f, 10.0f);
 				glutSolidCube(1.0);
@@ -801,8 +792,16 @@ void drawHelicopter() {
 		glPopMatrix();
 
 	glPopMatrix();
-	glDisable(GL_TEXTURE_2D);
+}
 
+void drawBuilding(float x, float z, float height) {
+	glPushMatrix();
+		GLfloat buildingDiffuse[] = {0.5f, 0.5f, 0.5f, 1.0f}; // Grey color
+		glMaterialfv(GL_FRONT, GL_DIFFUSE, buildingDiffuse);
+		glTranslatef(x, height / 2, z);
+		glScalef(2.0f, height, 2.0f);
+		glutSolidCube(1.0);
+	glPopMatrix();
 }
 
 /*
@@ -883,8 +882,8 @@ void createTexture(GLubyte(*myTexture)[textureWidth][textureHeight][3], char fil
 		for (t = 0; t < textureHeight; t++)
 		{
 			(*myTexture)[s][t][0] = imageData[3 * (s * textureHeight + t)];
-            (*myTexture)[s][t][1] = imageData[3 * (s * textureHeight + t) + 1];
-            (*myTexture)[s][t][2] = imageData[3 * (s * textureHeight + t) + 2];
+			(*myTexture)[s][t][1] = imageData[3 * (s * textureHeight + t) + 1];
+			(*myTexture)[s][t][2] = imageData[3 * (s * textureHeight + t) + 2];
 		}
 	}
 
@@ -899,4 +898,5 @@ void createTexture(GLubyte(*myTexture)[textureWidth][textureHeight][3], char fil
 
 	free(imageData);
 }
+
 /******************************************************************************/
