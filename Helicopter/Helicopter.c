@@ -49,7 +49,6 @@ typedef struct {
 
 //Helicopter
 const float maxRPS = 6.0f * 4; // 4 blades
-const float rotorIncreaseRPS = 1.5f * 4;
 const float rotorIncreaseRPS = 3.0f * 4;
 const float minY = 2.1f;
 const float moveSpeed = 8.0f;
@@ -79,7 +78,13 @@ GLubyte groundTexture[textureWidth][textureHeight][3];
 GLubyte buildingTexture[textureWidth][textureHeight][3];
 
 #define buildingNum 10
+#define MAX_PARTICLES 2000
 
+typedef struct {
+	float x, y, z;
+	float speedY;
+} Particle;
+Particle particles[MAX_PARTICLES];
 
 /******************************************************************************
  * Some Simple Definitions of Motion
@@ -186,6 +191,11 @@ void createTexture(GLubyte(*myTexture)[textureWidth][textureHeight][3], char fil
 void drawBuilding(float x, float z, float height);
 void drawWindmill(float x, float z, float angle);
 void drawTree(float x, float z);
+void drawRain();
+void updateRain();
+void updateLights();
+void updateAngles();
+
 
 /******************************************************************************
  * Animation-Specific Setup (Add your own definitions, constants, and globals here)
@@ -285,6 +295,8 @@ void display(void)
 			drawTree(x, z);
 		}
 	}
+
+	drawRain();
 
 	glutSwapBuffers();
 }
@@ -529,6 +541,14 @@ void init(void)
 	glFogi(GL_FOG_MODE, GL_EXP2);
 	glFogf(GL_FOG_DENSITY, 0.02f);
 	glHint(GL_FOG_HINT, GL_NICEST);
+
+	// Rain
+	for (int i = 0; i < MAX_PARTICLES; i++) {
+		particles[i].x = (rand() % 200) - 100;
+		particles[i].y = (rand() % 100) + 50;
+		particles[i].z = (rand() % 200) - 100;
+		particles[i].speedY = ((rand() % 50) + 50) / 100.0f;
+	}
 }
 
 /*
@@ -536,6 +556,22 @@ void init(void)
 */
 void think(void)
 {
+	updateAngles();
+	moveHelicopter();
+	
+	cameraX = heliLocation.x - cameraDistance * sin(heliRotation * M_PI / 180.0f);
+	cameraY = heliLocation.y + cameraHeight;
+	cameraZ = heliLocation.z - cameraDistance * cos(heliRotation * M_PI / 180.0f);
+
+	GLfloat fogDensity = 0.02f + (cameraY / 100.0f) * 0.05f;
+	glFogf(GL_FOG_DENSITY, fogDensity);
+
+	updateLights();
+
+	updateRain();
+}
+
+void updateAngles(){
 	// 3 Blades
 	windmillAngle += (5.0f * 3) * FRAME_TIME_SEC;
 	if (windmillAngle >= 360.0) {
@@ -572,34 +608,6 @@ void think(void)
 	if (tailRotorAngle >= 360.0) {
 		tailRotorAngle -= 360.0;
 	}
-
-	moveHelicopter();
-	
-	cameraX = heliLocation.x - cameraDistance * sin(heliRotation * M_PI / 180.0f);
-	cameraY = heliLocation.y + cameraHeight;
-	cameraZ = heliLocation.z - cameraDistance * cos(heliRotation * M_PI / 180.0f);
-
-	GLfloat fogDensity = 0.02f + (cameraY / 100.0f) * 0.05f; // Example adjustment
-	glFogf(GL_FOG_DENSITY, fogDensity);
-
-	// Position the spotlight at the front of the helicopter
-	GLfloat light1_position[] = {
-		heliLocation.x + 1.5f * sin(heliRotation * M_PI / 180.0f), // Front of the helicopter
-		heliLocation.y, // Use the helicopter's current height
-		heliLocation.z + 1.5f * cos(heliRotation * M_PI / 180.0f),
-		1.0f
-	};
-
-	// Direction vector pointing more downward
-	GLfloat light1_direction[] = {
-		sin(heliRotation * M_PI / 180.0f), // X direction
-		-1.0f,                            // Y direction (more downward)
-		cos(heliRotation * M_PI / 180.0f)  // Z direction
-	};
-
-	glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
-	glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, light1_direction);
-	glLightf(GL_LIGHT1, GL_SPOT_CUTOFF, 30.0f); // Adjust the cutoff angle if needed
 }
 
 void moveHelicopter() {
@@ -663,10 +671,43 @@ void moveHelicopter() {
 	}
 }
 
+void updateLights(){
+	// Helicopter Spotlight
+	GLfloat light1_position[] = {
+		heliLocation.x + 1.5f * sin(heliRotation * M_PI / 180.0f),
+		heliLocation.y,
+		heliLocation.z + 1.5f * cos(heliRotation * M_PI / 180.0f),
+		1.0f
+	};
+
+
+	GLfloat light1_direction[] = {
+		sin(heliRotation * M_PI / 180.0f),
+		-1.0f,
+		cos(heliRotation * M_PI / 180.0f)
+	};
+
+	glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
+	glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, light1_direction);
+	glLightf(GL_LIGHT1, GL_SPOT_CUTOFF, 30.0f);
+}
+
+void updateRain() {
+	for (int i = 0; i < MAX_PARTICLES; i++) {
+		particles[i].y -= particles[i].speedY;
+		if (particles[i].y < cameraY - 10) { // Reset particle if it goes below a certain height
+			particles[i].x = cameraX + (rand() % 200) - 100;
+			particles[i].y = cameraY + (rand() % 100) + 50;
+			particles[i].z = cameraZ + (rand() % 200) - 100;
+			particles[i].speedY = ((rand() % 50) + 50) / 100.0f;
+		}
+	}
+}
+
 /*
 	Initialise OpenGL lighting before we begin the render loop.
 */
-void initLights(void)
+void initLights()
 {
 	// Enable lighting
 	glEnable(GL_LIGHTING);
@@ -702,6 +743,25 @@ void initLights(void)
 
 	// Make GL normalize the normal vectors we supply.
 	glEnable(GL_NORMALIZE);
+}
+
+void drawRain() {
+	GLfloat mat_ambient[] = {0.8f, 0.8f, 0.8f, 1.0f};
+	GLfloat mat_diffuse[] = {0.8f, 0.8f, 0.8f, 1.0f};
+	GLfloat mat_specular[] = {1.0f, 1.0f, 1.0f, 1.0f};
+	GLfloat mat_shininess[] = {50.0f};
+
+	glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+	glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
+
+	glBegin(GL_LINES);
+    for (int i = 0; i < MAX_PARTICLES; i++) {
+        glVertex3f(particles[i].x, particles[i].y, particles[i].z);
+        glVertex3f(particles[i].x, particles[i].y - 0.5f, particles[i].z);
+    }
+    glEnd();
 }
 
 void drawGrid(float size, int squareSize) {
