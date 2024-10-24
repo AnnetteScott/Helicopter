@@ -17,7 +17,6 @@
 #include <freeglut.h>
 #include <math.h>
 #include <stdbool.h>
-#include <cstdio>
 
  /******************************************************************************
   * Animation & Timing Setup
