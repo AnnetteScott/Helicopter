@@ -69,10 +69,16 @@ float cameraX = 0.0f;
 float cameraY = 5.0f;
 float cameraZ = 20.0f;
 
+// Windmill
+float windmillAngle = 0.0f;
+
 #define textureWidth  32
 #define textureHeight 32
 GLubyte groundTexture[textureWidth][textureHeight][3];
-GLubyte heliTexture[textureWidth][textureHeight][3];
+GLubyte buildingTexture[textureWidth][textureHeight][3];
+
+#define buildingNum 10
+
 
 /******************************************************************************
  * Some Simple Definitions of Motion
@@ -177,6 +183,8 @@ void drawHelicopter();
 void moveHelicopter();
 void createTexture(GLubyte(*myTexture)[textureWidth][textureHeight][3], char fileName[50]);
 void drawBuilding(float x, float z, float height);
+void drawWindmill(float x, float z, float angle);
+void drawTree(float x, float z);
 
 /******************************************************************************
  * Animation-Specific Setup (Add your own definitions, constants, and globals here)
@@ -255,9 +263,27 @@ void display(void)
 
 	drawHelicopter();
 
+
 	// Draw buildings
-    drawBuilding(10.0f, 10.0f, 10.0f);
-    drawBuilding(-10.0f, -10.0f, 10.0f);
+	for(int i = 0; i < buildingNum; i++){
+		drawBuilding(25.0f, -10.0f + (i * 5), 10.0f);
+	}
+	for(int i = 0; i < buildingNum; i++){
+		drawBuilding(15.0f, -10.0f + (i * 5), 10.0f);
+	}
+
+	drawWindmill(60.0f, 50.0f, windmillAngle);
+	drawWindmill(40.0f, 50.0f, windmillAngle);
+	drawWindmill(20.0f, 50.0f, windmillAngle);
+	drawWindmill(0.0f, 50.0f, windmillAngle);
+	drawWindmill(-20.0f, 50.0f, windmillAngle);
+
+	// Draw trees
+	for (float x = -50.0f; x <= 50.0f; x += 5.0f) {
+		for (float z = -60.0f; z <= -20.0f; z += 5.0f) {
+			drawTree(x, z);
+		}
+	}
 
 	glutSwapBuffers();
 }
@@ -493,7 +519,7 @@ void init(void)
 	initLights();
 
 	createTexture(groundTexture, "Moss.ppm");
-	createTexture(heliTexture, "Stainless.ppm");
+	createTexture(buildingTexture, "Brick.ppm");
 	// Anything that relies on lighting or specifies normals must be initialised after initLights.
 }
 
@@ -502,6 +528,13 @@ void init(void)
 */
 void think(void)
 {
+	// 3 Blades
+	windmillAngle += (5.0f * 3) * FRAME_TIME_SEC;
+	if (windmillAngle >= 360.0) {
+		windmillAngle -= 360.0;
+	}
+
+
 	// Spin the rotors
 	if (spinning) {
 		if (rotorSpeed < maxRPS) {
@@ -511,13 +544,7 @@ void think(void)
 			rotorSpeed = maxRPS;
 		}
 
-		if (rotorAngle >= 360.0) {
-			rotorAngle -= 360.0;
-		}
-
-		if (tailRotorAngle >= 360.0) {
-			tailRotorAngle -= 360.0;
-		}
+		
 	}
 	else if (rotorSpeed > 0) {
 		rotorSpeed -= rotorIncreaseRPS * FRAME_TIME_SEC;
@@ -529,6 +556,14 @@ void think(void)
 
 	rotorAngle += rotorSpeed;
 	tailRotorAngle += (rotorSpeed * 5);
+	
+	if (rotorAngle >= 360.0) {
+		rotorAngle -= 360.0;
+	}
+
+	if (tailRotorAngle >= 360.0) {
+		tailRotorAngle -= 360.0;
+	}
 
 	moveHelicopter();
 	
@@ -796,13 +831,112 @@ void drawHelicopter() {
 
 void drawBuilding(float x, float z, float height) {
 	glPushMatrix();
-		GLfloat buildingDiffuse[] = {0.5f, 0.5f, 0.5f, 1.0f}; // Grey color
-		glMaterialfv(GL_FRONT, GL_DIFFUSE, buildingDiffuse);
 		glTranslatef(x, height / 2, z);
-		glScalef(2.0f, height, 2.0f);
-		glutSolidCube(1.0);
+		glScalef(4.0f, height, 3.0f);
+
+		GLfloat gridDiffuse[] = {0.5f, 0.5f, 0.5f, 1.0f};
+		glMaterialfv(GL_FRONT, GL_DIFFUSE, gridDiffuse);
+		// Set the current texture
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, textureWidth, textureHeight, 0,
+			GL_RGB, GL_UNSIGNED_BYTE, buildingTexture);
+		glEnable(GL_TEXTURE_2D);
+
+		// Draw the building with tiled texture
+		glBegin(GL_QUADS);
+
+		// Front face
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.5f, -0.5f, 0.5f);
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(0.5f, -0.5f, 0.5f);
+		glTexCoord2f(1.0f, height); glVertex3f(0.5f, 0.5f, 0.5f);
+		glTexCoord2f(0.0f, height); glVertex3f(-0.5f, 0.5f, 0.5f);
+
+		// Back face
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.5f, -0.5f, -0.5f);
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(0.5f, -0.5f, -0.5f);
+		glTexCoord2f(1.0f, height); glVertex3f(0.5f, 0.5f, -0.5f);
+		glTexCoord2f(0.0f, height); glVertex3f(-0.5f, 0.5f, -0.5f);
+
+		// Left face
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.5f, -0.5f, -0.5f);
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(-0.5f, -0.5f, 0.5f);
+		glTexCoord2f(1.0f, height); glVertex3f(-0.5f, 0.5f, 0.5f);
+		glTexCoord2f(0.0f, height); glVertex3f(-0.5f, 0.5f, -0.5f);
+
+		// Right face
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(0.5f, -0.5f, -0.5f);
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(0.5f, -0.5f, 0.5f);
+		glTexCoord2f(1.0f, height); glVertex3f(0.5f, 0.5f, 0.5f);
+		glTexCoord2f(0.0f, height); glVertex3f(0.5f, 0.5f, -0.5f);
+
+		// Top face
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.5f, 0.5f, -0.5f);
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(0.5f, 0.5f, -0.5f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(0.5f, 0.5f, 0.5f);
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(-0.5f, 0.5f, 0.5f);
+
+		glEnd();
+
+		// Disable texture mapping
+		glDisable(GL_TEXTURE_2D);
 	glPopMatrix();
 }
+
+void drawWindmill(float x, float z, float angle) {
+	glPushMatrix();
+		glTranslatef(x, 10.0f, z); // Position the windmill so that its base is at ground level
+
+		// Draw base (20 meters high)
+		GLfloat baseDiffuse[] = {0.5f, 0.5f, 0.5f, 1.0f}; // Grey color
+		glMaterialfv(GL_FRONT, GL_DIFFUSE, baseDiffuse);
+		glPushMatrix();
+			glScalef(1.0f, 20.0f, 1.0f); // Scale to 20 meters high
+			glutSolidCube(1.0);
+		glPopMatrix();
+
+		// Draw blades
+		glTranslatef(0.0f, 10.0f, -0.5f); // Move to the top of the base
+		glRotatef(angle, 0.0f, 0.0f, 1.0f); // Rotate the blades
+
+		GLfloat bladeDiffuse[] = {1.0f, 1.0f, 1.0f, 1.0f}; // White color
+		glMaterialfv(GL_FRONT, GL_DIFFUSE, bladeDiffuse);
+		for (int i = 0; i < 3; ++i) { // Draw 3 blades
+			glPushMatrix();
+				glRotatef(i * 120.0f, 0.0f, 0.0f, 1.0f); // 120 degrees apart
+				glTranslatef(0.0f, 5.0f, 0.0f); // Adjust blade length
+				glScalef(1.0f, 10.0f, 0.2f); // Scale blades
+				glutSolidCube(1.0);
+			glPopMatrix();
+		}
+	glPopMatrix();
+
+}
+
+void drawTree(float x, float z) {
+    glPushMatrix();
+        glTranslatef(x, 0, z);
+
+        // Draw trunk (4 meters tall)
+        GLfloat trunkDiffuse[] = {0.55f, 0.27f, 0.07f, 1.0f}; // Brown color
+        glMaterialfv(GL_FRONT, GL_DIFFUSE, trunkDiffuse);
+        glPushMatrix();
+            glRotatef(-90, 1.0f, 0.0f, 0.0f); // Rotate cylinder to stand upright
+            GLUquadric* quad = gluNewQuadric();
+            gluCylinder(quad, 0.5, 0.2, 4.0, 20, 20); // Cylinder with height 4 meters
+            gluDeleteQuadric(quad);
+        glPopMatrix();
+
+        // Draw leaves (2 meters tall)
+        glTranslatef(0.0f, 4.0f, 0.0f); // Position leaves at the top of the trunk
+        GLfloat leavesDiffuse[] = {0.0f, 0.8f, 0.0f, 1.0f}; // Green color
+        glMaterialfv(GL_FRONT, GL_DIFFUSE, leavesDiffuse);
+        glPushMatrix();
+            glRotatef(-90, 1.0f, 0.0f, 0.0f); // Rotate cone to stand upright
+            glScalef(1.0f, 1.0f, 1.0f); // Uniform scaling
+            glutSolidCone(1.0, 2.0, 20, 20); // Adjusted height to 2 meters
+        glPopMatrix();
+    glPopMatrix();
+}
+
 
 /*
 	Read file and create texture
